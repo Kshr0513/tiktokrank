@@ -1,8 +1,108 @@
-const NG_WORDS: string[] = [
-  // Add domain-specific NG words here
+/**
+ * NGワードフィルター
+ *
+ * 目的: 広告審査（Google AdSense 等）の要件を満たすため、
+ * 動画タイトル・投稿者名に問題語句が含まれる場合は isHidden=true にして
+ * 管理者確認待ちキューに入れる（即削除ではない）。
+ *
+ * 正規化処理:
+ *   1. 全角英数・記号 → 半角（Ａ→A、１→1 など）
+ *   2. カタカナ → ひらがな（エロ→えろ）
+ *   3. 大文字 → 小文字
+ * これにより「エロ」「えろ」「Ｅｒｏ」「ero」を1エントリで捕捉できる。
+ *
+ * カテゴリ:
+ *   ADULT    … アダルト・性的コンテンツ
+ *   DRUGS    … 違法薬物
+ *   SELF_HARM… 自傷・危険行為
+ *   FRAUD    … 詐欺・フィッシング
+ */
+
+// -------------------------------------------------------------------
+// 正規化
+// -------------------------------------------------------------------
+
+function normalize(text: string): string {
+  return (
+    text
+      // 全角ASCII (！〜) → 半角
+      .replace(/[！-～]/g, (ch) =>
+        String.fromCharCode(ch.charCodeAt(0) - 0xfee0)
+      )
+      // 全角スペース → 半角
+      .replace(/　/g, " ")
+      // カタカナ → ひらがな（ァ-ヶ の範囲）
+      .replace(/[ァ-ヶ]/g, (ch) =>
+        String.fromCharCode(ch.charCodeAt(0) - 0x60)
+      )
+      .toLowerCase()
+  );
+}
+
+// -------------------------------------------------------------------
+// NGワードリスト（normalize 後の文字列と照合するため
+//               すべてひらがな または 英小文字 で記載）
+// -------------------------------------------------------------------
+
+/** アダルト・性的コンテンツ */
+const ADULT = [
+  "えろ",     // エロ/えろ（カタカナは normalize でひらがなに変換される）
+  "えっち",   // エッチ/えっち
+  "ぽるの",   // ポルノ
+  "無修正",   // 漢字はnormalize後も漢字のまま → 漢字で登録
+  "18禁",
+  "ぬーど",   // ヌード
+  "ふぇら",   // フェラ
+  "くんに",   // クンニ
+  "おなにー", // オナニー
+  "ちんぽ",
+  "まんこ",
+  "porn",
+  "xxx",
+  "nude",
+  "hentai",   // 英語圏での日本語アダルトアニメ表現
+] as const;
+
+/** 違法薬物 */
+const DRUGS = [
+  "大麻",       // 漢字で登録
+  "まりふぁな", // マリファナ
+  "こかいん",   // コカイン
+  "覚醒剤",     // 漢字で登録
+  "へろいん",   // ヘロイン
+  "cannabis",
+  "cocaine",
+  "heroin",
+  "marijuana",
+  "mdma",
+  "weed",
+] as const;
+
+/** 自傷・危険行為 */
+const SELF_HARM = [
+  "りすとかっと", // リストカット（カタカナ→ひらがな変換後）
+  "自傷行為",     // 漢字で登録
+  "首吊り",       // 漢字＋ひらがなで登録
+] as const;
+
+/** 詐欺・フィッシング */
+const FRAUD = [
+  "ふぃっしんぐ", // フィッシング
+  "phishing",
+] as const;
+
+// -------------------------------------------------------------------
+// エクスポート
+// -------------------------------------------------------------------
+
+const ALL_NG_WORDS: readonly string[] = [
+  ...ADULT,
+  ...DRUGS,
+  ...SELF_HARM,
+  ...FRAUD,
 ];
 
 export function containsNgWord(text: string): boolean {
-  const lower = text.toLowerCase();
-  return NG_WORDS.some((w) => lower.includes(w.toLowerCase()));
+  const normalized = normalize(text);
+  return ALL_NG_WORDS.some((w) => normalized.includes(w));
 }
