@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getRanking, getRealtimeFeed, type Period } from "@/lib/ranking";
 import { RankingList } from "@/components/RankingList";
 import { RealtimeFeed } from "@/components/RealtimeFeed";

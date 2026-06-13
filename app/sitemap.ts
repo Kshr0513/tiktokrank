@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 
+// ビルド時の静的生成を無効化（DBアクセスが必要なため）
+export const dynamic = "force-dynamic";
+
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://tiktokrank.example.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
