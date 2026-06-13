@@ -1,4 +1,10 @@
-/** Simple in-process rate limiter (IP → timestamps). Resets on server restart. */
+/**
+ * インメモリのレートリミッター。
+ * 注意: Vercel のサーバーレス環境では複数インスタンスが並行起動するため、
+ * このストアはインスタンス間で共有されない。
+ * 高トラフィック時はUpstash Redis等のKVストアへの移行を検討すること。
+ * 現状は24h重複チェック（DB保証）がバックストップとして機能する。
+ */
 const store = new Map<string, number[]>();
 
 /**

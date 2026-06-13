@@ -1,16 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-
-function checkBasicAuth(authHeader: string | null): boolean {
-  if (!authHeader?.startsWith("Basic ")) return false;
-  const b64 = authHeader.slice(6);
-  const decoded = Buffer.from(b64, "base64").toString("utf-8");
-  const [user, pass] = decoded.split(":");
-  return (
-    user === process.env.ADMIN_USER && pass === process.env.ADMIN_PASSWORD
-  );
-}
+import { checkBasicAuth } from "@/lib/adminAuth";
 
 export default async function AdminPage() {
   const headersList = await headers();
