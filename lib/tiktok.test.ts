@@ -9,6 +9,15 @@ describe("normalizeTikTokUrl", () => {
     expect(videoId).toBe("7123456789012345678");
   });
 
+  it("builds canonical URL with username", async () => {
+    const { canonicalUrl } = await normalizeTikTokUrl(
+      "https://www.tiktok.com/@myuser/video/7123456789012345678"
+    );
+    expect(canonicalUrl).toBe(
+      "https://www.tiktok.com/@myuser/video/7123456789012345678"
+    );
+  });
+
   it("rejects non-tiktok domain", async () => {
     await expect(
       normalizeTikTokUrl("https://example.com/video/123")

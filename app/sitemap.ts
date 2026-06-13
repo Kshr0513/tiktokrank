@@ -6,6 +6,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://tiktokrank.example
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "always", priority: 1.0 },
+    { url: `${BASE_URL}/ranking/realtime`, changeFrequency: "always", priority: 0.9 },
     { url: `${BASE_URL}/ranking/daily`, changeFrequency: "always", priority: 0.9 },
     { url: `${BASE_URL}/ranking/weekly`, changeFrequency: "hourly", priority: 0.8 },
     { url: `${BASE_URL}/ranking/monthly`, changeFrequency: "daily", priority: 0.7 },

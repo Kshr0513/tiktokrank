@@ -17,6 +17,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return {
     title: video.title ?? "TikTok動画",
     description: `${video.authorName ? `@${video.authorName} の` : ""}TikTok動画。TikTok保存ランキングで人気の動画です。`,
+    alternates: { canonical: `/video/${id}` },
     openGraph: {
       images: video.thumbnailUrl ? [{ url: video.thumbnailUrl }] : [],
     },
@@ -45,6 +46,8 @@ export default async function VideoPage({ params }: { params: Params }) {
     "@type": "VideoObject",
     name: video.title ?? "TikTok動画",
     description: `${video.authorName ? `@${video.authorName} の` : ""}TikTok動画`,
+    // W-4: Google VideoObject リッチリザルトの必須項目
+    uploadDate: video.createdAt.toISOString(),
     thumbnailUrl: video.thumbnailUrl ? [video.thumbnailUrl] : undefined,
     author: video.authorName ? { "@type": "Person", name: video.authorName } : undefined,
     url: video.url,

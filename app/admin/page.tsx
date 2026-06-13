@@ -1,7 +1,27 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { checkBasicAuth } from "@/lib/adminAuth";
+
+// C-2: HTML form POST は Authorization ヘッダを送らないため Server Action に変更
+async function toggleVideo(formData: FormData) {
+  "use server";
+  const headersList = await headers();
+  if (!checkBasicAuth(headersList.get("authorization"))) return;
+
+  const videoId = formData.get("videoId");
+  if (typeof videoId !== "string" || !videoId) return;
+
+  const video = await prisma.video.findUnique({ where: { id: videoId } });
+  if (!video) return;
+
+  await prisma.video.update({
+    where: { id: videoId },
+    data: { isHidden: !video.isHidden },
+  });
+
+  revalidatePath("/admin");
+}
 
 export default async function AdminPage() {
   const headersList = await headers();
@@ -58,7 +78,8 @@ export default async function AdminPage() {
                     >
                       {r.video.isHidden ? "非表示" : "表示中"}
                     </span>
-                    <form action={`/admin/toggle/${r.videoId}`} method="POST">
+                    <form action={toggleVideo}>
+                      <input type="hidden" name="videoId" value={r.videoId} />
                       <button
                         type="submit"
                         className="text-xs text-blue-600 hover:underline"
@@ -84,8 +105,18 @@ export default async function AdminPage() {
           <div className="space-y-2">
             {hiddenVideos.map((v) => (
               <div key={v.id} className="bg-white border rounded-lg p-3 text-sm">
-                <p className="font-medium">{v.title ?? v.id}</p>
-                <p className="text-gray-500 text-xs">{v.url}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{v.title ?? v.id}</p>
+                    <p className="text-gray-500 text-xs">{v.url}</p>
+                  </div>
+                  <form action={toggleVideo}>
+                    <input type="hidden" name="videoId" value={v.id} />
+                    <button type="submit" className="text-xs text-blue-600 hover:underline shrink-0">
+                      表示に戻す
+                    </button>
+                  </form>
+                </div>
               </div>
             ))}
           </div>

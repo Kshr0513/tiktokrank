@@ -19,6 +19,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       // TikTokサムネイル画像の読み込みを許可
       "img-src 'self' data: https://*.tiktok.com https://*.tiktokcdn.com",
+      // W-7: 広告タグを使用する際は使用する広告ネットワークのドメインを追加すること
+      // 例: "connect-src 'self' https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com"
       "connect-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),

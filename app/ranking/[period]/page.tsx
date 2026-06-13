@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getRanking, getRealtimeFeed, type Period } from "@/lib/ranking";
 import { RankingList } from "@/components/RankingList";
 import { RealtimeFeed } from "@/components/RealtimeFeed";
@@ -37,11 +37,14 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     return {
       title: `TikTok リアルタイム投稿フィード`,
       description: "今まさに投稿されているTikTok動画を新着順で確認できます。",
+      alternates: { canonical: "/ranking/realtime" },
     };
   }
   return {
     title: `【${today}】TikTok ${label}人気ランキング`,
     description: `TikTokの${label}人気動画ランキング。今みんなが注目している動画をリアルタイムで確認できます。`,
+    // W-6: daily は / と同一コンテンツなので canonical を / に向ける
+    alternates: { canonical: period === "daily" ? "/" : `/ranking/${period}` },
   };
 }
 
@@ -115,8 +118,26 @@ export default async function RankingPage({
   const { entries, total } = await getRanking(typedPeriod, page, PER_PAGE);
   const totalPages = Math.ceil(total / PER_PAGE);
 
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "";
+  // S-5: ランキングページの ItemList 構造化データ
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `TikTok ${label}ランキング`,
+    itemListElement: entries.map((entry) => ({
+      "@type": "ListItem",
+      position: entry.rank,
+      url: `${BASE_URL}/video/${entry.videoId}`,
+      name: entry.title ?? "TikTok動画",
+    })),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
       <section className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
           TikTok {label}ランキング

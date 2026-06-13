@@ -52,18 +52,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "URLの処理中にエラーが発生しました" }, { status: 500 });
   }
 
-  // Check for duplicate submission from same IP within 24h
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const existing = await prisma.submission.findFirst({
-    where: {
-      videoId,
-      ipHash,
-      createdAt: { gte: oneDayAgo },
-    },
-  });
 
-  // Register video if first time seen
+  // C-4: 重複チェックを先行させて不要な oEmbed 呼び出しを防ぐ
+  const existing = await prisma.submission.findFirst({
+    where: { videoId, ipHash, createdAt: { gte: oneDayAgo } },
+  });
+  if (existing) {
+    return NextResponse.json(
+      { error: "この動画はすでに投稿済みです（24時間に1回まで）" },
+      { status: 429 }
+    );
+  }
+
+  // 既存動画の確認
   let video = await prisma.video.findUnique({ where: { id: videoId } });
+
+  if (video?.isHidden) {
+    return NextResponse.json(
+      { error: "この動画は現在確認中です" },
+      { status: 403 }
+    );
+  }
+
+  // 初回投稿: oEmbed 取得 → 動画登録
   if (!video) {
     const oembed = await fetchOEmbed(canonicalUrl);
     const hasNg =
@@ -78,20 +90,12 @@ export async function POST(req: NextRequest) {
         isHidden: hasNg,
       },
     });
-  }
-
-  if (video.isHidden) {
-    return NextResponse.json(
-      { error: "この動画は現在確認中です" },
-      { status: 403 }
-    );
-  }
-
-  if (existing) {
-    return NextResponse.json(
-      { error: "この動画はすでに投稿済みです（24時間に1回まで）" },
-      { status: 429 }
-    );
+    if (video.isHidden) {
+      return NextResponse.json(
+        { error: "この動画は現在確認中です" },
+        { status: 403 }
+      );
+    }
   }
 
   await prisma.submission.create({

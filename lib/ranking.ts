@@ -49,9 +49,10 @@ export async function getRealtimeFeed(
     take: perPage,
   });
 
-  const total = await prisma.submission
-    .groupBy({ by: ["videoId"], _count: true })
-    .then((r) => r.length);
+  // W-2: isHidden 動画を total から除外（ページネーション計算の正確化）
+  const total = await prisma.video.count({
+    where: { isHidden: false, submissions: { some: {} } },
+  });
 
   const videoIds = grouped.map((g) => g.videoId);
   const videos = await prisma.video.findMany({
@@ -93,11 +94,15 @@ export async function getRanking(
     take: perPage,
   });
 
-  const total = await prisma.submission.groupBy({
-    by: ["videoId"],
-    where: whereClause,
-    _count: true,
-  }).then((r) => r.length);
+  // W-1: isHidden 動画を total から除外（ページネーション計算の正確化）
+  const total = await prisma.video.count({
+    where: {
+      isHidden: false,
+      ...(since
+        ? { submissions: { some: { createdAt: { gte: since } } } }
+        : { submissions: { some: {} } }),
+    },
+  });
 
   const videoIds = grouped.map((g) => g.videoId);
   const videos = await prisma.video.findMany({
