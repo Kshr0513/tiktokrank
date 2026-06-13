@@ -87,22 +87,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Always record the submission (even duplicates), but only count unique ones
+  if (existing) {
+    return NextResponse.json(
+      { error: "この動画はすでに投稿済みです（24時間に1回まで）" },
+      { status: 429 }
+    );
+  }
+
   await prisma.submission.create({
     data: { videoId, ipHash },
   });
 
   const count = await prisma.submission.count({
-    where: {
-      videoId,
-      createdAt: { gte: oneDayAgo },
-      // Count distinct by ipHash is not directly supported; approximate with total unique
-    },
+    where: { videoId, createdAt: { gte: oneDayAgo } },
   });
 
   return NextResponse.json({
     success: true,
-    isDuplicate: !!existing,
     videoId,
     title: video.title,
     count,

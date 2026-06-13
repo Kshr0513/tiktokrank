@@ -24,7 +24,6 @@ export function SubmitForm() {
         error?: string;
         title?: string;
         count?: number;
-        isDuplicate?: boolean;
       };
 
       if (!res.ok || !data.success) {
