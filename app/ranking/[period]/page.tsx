@@ -8,7 +8,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { SubmitForm } from "@/components/SubmitForm";
 import { SortTabs } from "@/components/SortTabs";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 const PERIOD_LABELS: Record<Period, string> = {
   realtime: "リアルタイム",
@@ -49,9 +49,6 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   };
 }
 
-export function generateStaticParams() {
-  return VALID_PERIODS.map((period) => ({ period }));
-}
 
 export default async function RankingPage({
   params,

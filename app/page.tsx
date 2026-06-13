@@ -6,7 +6,7 @@ import { Pagination } from "@/components/Pagination";
 import { AdSlot } from "@/components/AdSlot";
 import { SortTabs } from "@/components/SortTabs";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "TikTok保存ランキング | Twitter保存ランキングのTikTok版 - 今バズってる動画",
