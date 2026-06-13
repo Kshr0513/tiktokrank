@@ -42,7 +42,7 @@ export default async function VideoPage({ params }: { params: Params }) {
   if (!video) notFound();
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "";
-  const shareText = `${video.title ?? "TikTok動画"} #TikTok保存ランキング`;
+  const shareText = `今TikTokで話題の動画📱\n\n「${video.title ?? "TikTok動画"}」${video.authorName ? `\n@${video.authorName}` : ""}\n\n累計${totalCount}人が保存・${clickCount}view\nTikTok保存ランキングで詳細を見る👇\n#TikTok保存ランキング #TikTok人気動画`;
   const shareUrl = `${baseUrl}/video/${id}`;
   const xShareHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
 

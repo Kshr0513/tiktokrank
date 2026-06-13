@@ -68,7 +68,7 @@ export function RankingList({ entries, sortType = "submit" }: Props) {
               <div className="mt-1 flex items-center gap-2">
                 <ReportButton videoId={entry.videoId} />
                 <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`【${entry.rank}位】${entry.title ?? "TikTok動画"} #TikTok保存ランキング`)}&url=${encodeURIComponent(`${baseUrl}/video/${entry.videoId}`)}`}
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`【${entry.rank}位】TikTok保存ランキング🔥\n\n「${entry.title ?? "TikTok動画"}」\n\n${entry.count}${sortType === "click" ? " view獲得中" : "人が保存中"}👇\n#TikTok保存ランキング #TikTok人気動画`)}&url=${encodeURIComponent(`${baseUrl}/video/${entry.videoId}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-gray-400 hover:text-black transition-colors"
