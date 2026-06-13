@@ -41,6 +41,11 @@ export default async function VideoPage({ params }: { params: Params }) {
 
   if (!video) notFound();
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "";
+  const shareText = `${video.title ?? "TikTok動画"} #TikTok保存ランキング`;
+  const shareUrl = `${baseUrl}/video/${id}`;
+  const xShareHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "VideoObject",
@@ -97,6 +102,14 @@ export default async function VideoPage({ params }: { params: Params }) {
             className="block w-full text-center bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-lg transition-colors"
           >
             TikTokで見る / 保存する
+          </a>
+          <a
+            href={xShareHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-2 w-full border border-gray-200 hover:border-gray-400 text-gray-700 font-medium py-2.5 rounded-lg transition-colors text-sm"
+          >
+            <span className="font-bold">𝕏</span> でシェアする
           </a>
         </div>
       </div>

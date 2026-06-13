@@ -19,6 +19,8 @@ export function RankingList({ entries, sortType = "submit" }: Props) {
     );
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "";
+
   const items: React.ReactNode[] = [];
   entries.forEach((entry, idx) => {
     if (idx > 0 && idx % 5 === 0) {
@@ -63,8 +65,16 @@ export function RankingList({ entries, sortType = "submit" }: Props) {
               <p className="text-xs text-rose-500 mt-1 font-medium">
                 {sortType === "click" ? `${entry.count} view` : `${entry.count}件の投稿`}
               </p>
-              <div className="mt-1">
+              <div className="mt-1 flex items-center gap-2">
                 <ReportButton videoId={entry.videoId} />
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`【${entry.rank}位】${entry.title ?? "TikTok動画"} #TikTok保存ランキング`)}&url=${encodeURIComponent(`${baseUrl}/video/${entry.videoId}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-400 hover:text-black transition-colors"
+                >
+                  𝕏
+                </a>
               </div>
             </div>
 
