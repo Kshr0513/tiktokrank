@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { fetchOEmbed } from "@/lib/tiktok";
 
 // Vercel Cron Jobs は Authorization: Bearer <CRON_SECRET> を付与して呼び出す
 function isAuthorized(req: NextRequest): boolean {
@@ -47,14 +48,57 @@ export async function GET(req: NextRequest) {
     where: { createdAt: { lt: retentionCutoff } },
   });
 
+  // 3. サムネイルURLの期限切れチェックと自動更新
+  const now = Date.now();
+  const expiryThreshold = Math.floor(now / 1000) + 60 * 60; // 現在時刻 + 1時間（秒）
+
+  const videosWithThumbnail = await prisma.video.findMany({
+    where: { isHidden: false, thumbnailUrl: { not: null } },
+    select: { id: true, url: true, thumbnailUrl: true },
+    take: 50,
+  });
+
+  let updatedThumbnails = 0;
+
+  for (const video of videosWithThumbnail) {
+    if (!video.thumbnailUrl) continue;
+
+    let needsRefresh = false;
+    try {
+      const thumbUrl = new URL(video.thumbnailUrl);
+      const xExpires = thumbUrl.searchParams.get("x-expires");
+      if (xExpires !== null) {
+        const expiresAt = parseInt(xExpires, 10);
+        if (!isNaN(expiresAt) && expiresAt < expiryThreshold) {
+          needsRefresh = true;
+        }
+      }
+    } catch {
+      // URLパースエラーは無視
+    }
+
+    if (!needsRefresh) continue;
+
+    const oembed = await fetchOEmbed(video.url);
+    if (oembed.thumbnailUrl && oembed.thumbnailUrl !== video.thumbnailUrl) {
+      await prisma.video.update({
+        where: { id: video.id },
+        data: { thumbnailUrl: oembed.thumbnailUrl },
+      });
+      updatedThumbnails++;
+    }
+  }
+
   console.log(
     `[cron/cleanup] videos=${deletedVideos} submissions_hidden=${deletedSubmissionsByHidden} ` +
-    `submissions_expired=${deletedOldSubmissions} reports=${deletedReports}`
+    `submissions_expired=${deletedOldSubmissions} reports=${deletedReports} ` +
+    `thumbnails_updated=${updatedThumbnails}`
   );
 
   return NextResponse.json({
     deletedVideos,
     deletedSubmissions: deletedSubmissionsByHidden + deletedOldSubmissions,
     deletedReports,
+    updatedThumbnails,
   });
 }

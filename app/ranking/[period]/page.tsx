@@ -10,6 +10,15 @@ import { SortTabs } from "@/components/SortTabs";
 
 export const dynamic = "force-dynamic";
 
+/** JST の昨日の日付を YYYY-MM-DD 形式で返す */
+function getYesterdayJst(): string {
+  const now = new Date();
+  const todayJst = now.toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+  const todayMidnightJst = new Date(todayJst + "T00:00:00+09:00");
+  const yesterdayMidnightJst = new Date(todayMidnightJst.getTime() - 24 * 60 * 60 * 1000);
+  return yesterdayMidnightJst.toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+}
+
 const PERIOD_LABELS: Record<Period, string> = {
   realtime: "リアルタイム",
   daily: "24時間",
@@ -114,6 +123,8 @@ export default async function RankingPage({
     );
   }
 
+  const yesterdayStr = getYesterdayJst();
+
   const { entries, total } =
     currentSort === "click"
       ? await getClickRanking(typedPeriod, page, PER_PAGE)
@@ -167,6 +178,14 @@ export default async function RankingPage({
               </a>
             ))}
           </nav>
+        </div>
+        <div className="mb-3">
+          <a
+            href={`/ranking/archive/${yesterdayStr}`}
+            className="text-xs text-gray-500 hover:text-rose-500"
+          >
+            昨日のランキングを見る
+          </a>
         </div>
         <SortTabs
           currentSort={currentSort}
