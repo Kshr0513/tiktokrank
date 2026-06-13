@@ -1,0 +1,46 @@
+// Switch DATABASE_URL to postgresql://... for production (Supabase/Postgres)
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Video {
+  id           String   @id
+  url          String
+  title        String?
+  authorName   String?
+  thumbnailUrl String?
+  isHidden     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  submissions  Submission[]
+  reports      Report[]
+}
+
+model Submission {
+  id        Int      @id @default(autoincrement())
+  videoId   String
+  ipHash    String
+  createdAt DateTime @default(now())
+
+  video     Video    @relation(fields: [videoId], references: [id])
+
+  @@index([videoId, createdAt])
+  @@index([ipHash, videoId, createdAt])
+}
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  videoId   String
+  reason    String
+  createdAt DateTime @default(now())
+
+  video     Video    @relation(fields: [videoId], references: [id])
+
+  @@index([videoId])
+}
