@@ -40,3 +40,4 @@ memory/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+dev.db
