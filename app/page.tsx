@@ -61,7 +61,7 @@ export default async function HomePage({
           </nav>
         </div>
         <SortTabs currentSort={currentSort} basePath="/" currentPage={page} />
-        <RankingList entries={entries} />
+        <RankingList entries={entries} sortType={currentSort} />
         <Pagination
           currentPage={page}
           totalPages={totalPages}

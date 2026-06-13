@@ -173,7 +173,7 @@ export default async function RankingPage({
           basePath={`/ranking/${period}`}
           currentPage={page}
         />
-        <RankingList entries={entries} />
+        <RankingList entries={entries} sortType={currentSort} />
         <Pagination
           currentPage={page}
           totalPages={totalPages}

@@ -7,9 +7,10 @@ import { VideoLink } from "./VideoLink";
 
 interface Props {
   entries: RankingEntry[];
+  sortType?: "submit" | "click";
 }
 
-export function RankingList({ entries }: Props) {
+export function RankingList({ entries, sortType = "submit" }: Props) {
   if (entries.length === 0) {
     return (
       <p className="text-center text-gray-500 py-12">
@@ -60,7 +61,7 @@ export function RankingList({ entries }: Props) {
                 <p className="text-xs text-gray-500 mt-0.5">@{entry.authorName}</p>
               )}
               <p className="text-xs text-rose-500 mt-1 font-medium">
-                {entry.count}件の投稿
+                {sortType === "click" ? `${entry.count} view` : `${entry.count}件の投稿`}
               </p>
               <div className="mt-1">
                 <ReportButton videoId={entry.videoId} />
