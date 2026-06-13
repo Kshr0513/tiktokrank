@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { normalizeTikTokUrl, fetchOEmbed, TikTokUrlError } from "@/lib/tiktok";
@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
     where: { videoId, createdAt: { gte: oneDayAgo } },
   });
 
+  revalidateTag("ranking");
   revalidatePath("/");
   revalidatePath("/ranking/daily");
   revalidatePath("/ranking/weekly");

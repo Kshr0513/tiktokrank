@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { checkVideoExists } from "@/lib/tiktok";
 import { AdSlot } from "@/components/AdSlot";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type Params = Promise<{ id: string }>;
 
+// React cache でリクエスト内の重複クエリを排除
+const getVideo = cache(async (id: string) => {
+  return prisma.video.findUnique({ where: { id, isHidden: false } });
+});
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { id } = await params;
-  const video = await prisma.video.findUnique({ where: { id, isHidden: false } });
+  const video = await getVideo(id);
   if (!video) return {};
 
   return {
@@ -26,25 +31,21 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function VideoPage({ params }: { params: Params }) {
   const { id } = await params;
-  const video = await prisma.video.findUnique({ where: { id, isHidden: false } });
+
+  // getVideo + counts を並列取得
+  const [video, totalCount, clickCount] = await Promise.all([
+    getVideo(id),
+    prisma.submission.count({ where: { videoId: id } }),
+    prisma.click.count({ where: { videoId: id } }),
+  ]);
+
   if (!video) notFound();
-
-  // TikTok側で動画が削除されていたら非表示にして404を返す
-  const exists = await checkVideoExists(video.url);
-  if (!exists) {
-    await prisma.video.update({ where: { id }, data: { isHidden: true } });
-    notFound();
-  }
-
-  const totalCount = await prisma.submission.count({ where: { videoId: id } });
-  const clickCount = await prisma.click.count({ where: { videoId: id } });
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "VideoObject",
     name: video.title ?? "TikTok動画",
     description: `${video.authorName ? `@${video.authorName} の` : ""}TikTok動画`,
-    // W-4: Google VideoObject リッチリザルトの必須項目
     uploadDate: video.createdAt.toISOString(),
     thumbnailUrl: video.thumbnailUrl ? [video.thumbnailUrl] : undefined,
     author: video.authorName ? { "@type": "Person", name: video.authorName } : undefined,

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 export type Period = "realtime" | "daily" | "weekly" | "monthly" | "all";
@@ -35,145 +36,155 @@ export interface FeedEntry {
   submittedAt: Date;
 }
 
-/** 最新投稿順フィード（リアルタイムタブ用）。動画単位で重複除去し、最新投稿時刻順に返す */
-export async function getRealtimeFeed(
-  page = 1,
-  perPage = 50
-): Promise<{ entries: FeedEntry[]; total: number }> {
-  // 動画ごとに最新のsubmission時刻を取得して新着順に並べる
-  const grouped = await prisma.submission.groupBy({
-    by: ["videoId"],
-    _max: { createdAt: true },
-    orderBy: { _max: { createdAt: "desc" } },
-    skip: (page - 1) * perPage,
-    take: perPage,
-  });
+export const getRealtimeFeed = unstable_cache(
+  async (page = 1, perPage = 50): Promise<{ entries: FeedEntry[]; total: number }> => {
+    const [grouped, total] = await Promise.all([
+      prisma.submission.groupBy({
+        by: ["videoId"],
+        _max: { createdAt: true },
+        orderBy: { _max: { createdAt: "desc" } },
+        skip: (page - 1) * perPage,
+        take: perPage,
+      }),
+      prisma.video.count({
+        where: { isHidden: false, submissions: { some: {} } },
+      }),
+    ]);
 
-  // W-2: isHidden 動画を total から除外（ページネーション計算の正確化）
-  const total = await prisma.video.count({
-    where: { isHidden: false, submissions: { some: {} } },
-  });
+    const videoIds = grouped.map((g) => g.videoId);
+    const videos = await prisma.video.findMany({
+      where: { id: { in: videoIds }, isHidden: false },
+    });
+    const videoMap = new Map(videos.map((v) => [v.id, v]));
 
-  const videoIds = grouped.map((g) => g.videoId);
-  const videos = await prisma.video.findMany({
-    where: { id: { in: videoIds }, isHidden: false },
-  });
-  const videoMap = new Map(videos.map((v) => [v.id, v]));
+    const entries: FeedEntry[] = grouped
+      .filter((g) => videoMap.has(g.videoId))
+      .map((g) => {
+        const v = videoMap.get(g.videoId)!;
+        return {
+          videoId: g.videoId,
+          url: v.url,
+          title: v.title,
+          authorName: v.authorName,
+          thumbnailUrl: v.thumbnailUrl,
+          submittedAt: g._max.createdAt!,
+        };
+      });
 
-  const entries: FeedEntry[] = grouped
-    .filter((g) => videoMap.has(g.videoId))
-    .map((g) => {
-      const v = videoMap.get(g.videoId)!;
-      return {
-        videoId: g.videoId,
-        url: v.url,
-        title: v.title,
-        authorName: v.authorName,
-        thumbnailUrl: v.thumbnailUrl,
-        submittedAt: g._max.createdAt!,
-      };
+    return { entries, total };
+  },
+  ["realtime-feed"],
+  { revalidate: 30, tags: ["ranking"] }
+);
+
+export const getRanking = unstable_cache(
+  async (
+    period: Exclude<Period, "realtime">,
+    page = 1,
+    perPage = 50
+  ): Promise<{ entries: RankingEntry[]; total: number }> => {
+    const since = periodStart(period);
+    const whereClause = since ? { createdAt: { gte: since } } : {};
+
+    const grouped = await prisma.submission.groupBy({
+      by: ["videoId"],
+      where: whereClause,
+      _count: { videoId: true },
+      orderBy: { _count: { videoId: "desc" } },
+      skip: (page - 1) * perPage,
+      take: perPage,
     });
 
-  return { entries, total };
-}
+    const videoIds = grouped.map((g) => g.videoId);
+    const [total, videos] = await Promise.all([
+      prisma.video.count({
+        where: {
+          isHidden: false,
+          ...(since
+            ? { submissions: { some: { createdAt: { gte: since } } } }
+            : { submissions: { some: {} } }),
+        },
+      }),
+      prisma.video.findMany({
+        where: { id: { in: videoIds }, isHidden: false },
+      }),
+    ]);
 
-export async function getRanking(
-  period: Exclude<Period, "realtime">,
-  page = 1,
-  perPage = 50
-): Promise<{ entries: RankingEntry[]; total: number }> {
-  const since = periodStart(period as Exclude<Period, "realtime">);
-  const whereClause = since ? { createdAt: { gte: since } } : {};
+    const videoMap = new Map(videos.map((v) => [v.id, v]));
 
-  const grouped = await prisma.submission.groupBy({
-    by: ["videoId"],
-    where: whereClause,
-    _count: { videoId: true },
-    orderBy: { _count: { videoId: "desc" } },
-    skip: (page - 1) * perPage,
-    take: perPage,
-  });
+    const entries: RankingEntry[] = grouped
+      .filter((g) => videoMap.has(g.videoId))
+      .map((g, i) => {
+        const v = videoMap.get(g.videoId)!;
+        return {
+          rank: (page - 1) * perPage + i + 1,
+          videoId: g.videoId,
+          url: v.url,
+          title: v.title,
+          authorName: v.authorName,
+          thumbnailUrl: v.thumbnailUrl,
+          count: g._count.videoId,
+        };
+      });
 
-  // W-1: isHidden 動画を total から除外（ページネーション計算の正確化）
-  const total = await prisma.video.count({
-    where: {
-      isHidden: false,
-      ...(since
-        ? { submissions: { some: { createdAt: { gte: since } } } }
-        : { submissions: { some: {} } }),
-    },
-  });
+    return { entries, total };
+  },
+  ["ranking"],
+  { revalidate: 60, tags: ["ranking"] }
+);
 
-  const videoIds = grouped.map((g) => g.videoId);
-  const videos = await prisma.video.findMany({
-    where: { id: { in: videoIds }, isHidden: false },
-  });
-  const videoMap = new Map(videos.map((v) => [v.id, v]));
+export const getClickRanking = unstable_cache(
+  async (
+    period: Exclude<Period, "realtime">,
+    page = 1,
+    perPage = 50
+  ): Promise<{ entries: RankingEntry[]; total: number }> => {
+    const since = periodStart(period);
+    const whereClause = since ? { createdAt: { gte: since } } : {};
 
-  const entries: RankingEntry[] = grouped
-    .filter((g) => videoMap.has(g.videoId))
-    .map((g, i) => {
-      const v = videoMap.get(g.videoId)!;
-      return {
-        rank: (page - 1) * perPage + i + 1,
-        videoId: g.videoId,
-        url: v.url,
-        title: v.title,
-        authorName: v.authorName,
-        thumbnailUrl: v.thumbnailUrl,
-        count: g._count.videoId,
-      };
+    const grouped = await prisma.click.groupBy({
+      by: ["videoId"],
+      where: whereClause,
+      _count: { videoId: true },
+      orderBy: { _count: { videoId: "desc" } },
+      skip: (page - 1) * perPage,
+      take: perPage,
     });
 
-  return { entries, total };
-}
+    const videoIds = grouped.map((g) => g.videoId);
+    const [total, videos] = await Promise.all([
+      prisma.video.count({
+        where: {
+          isHidden: false,
+          ...(since
+            ? { clicks: { some: { createdAt: { gte: since } } } }
+            : { clicks: { some: {} } }),
+        },
+      }),
+      prisma.video.findMany({
+        where: { id: { in: videoIds }, isHidden: false },
+      }),
+    ]);
 
-export async function getClickRanking(
-  period: Exclude<Period, "realtime">,
-  page = 1,
-  perPage = 50
-): Promise<{ entries: RankingEntry[]; total: number }> {
-  const since = periodStart(period as Exclude<Period, "realtime">);
-  const whereClause = since ? { createdAt: { gte: since } } : {};
+    const videoMap = new Map(videos.map((v) => [v.id, v]));
 
-  const grouped = await prisma.click.groupBy({
-    by: ["videoId"],
-    where: whereClause,
-    _count: { videoId: true },
-    orderBy: { _count: { videoId: "desc" } },
-    skip: (page - 1) * perPage,
-    take: perPage,
-  });
+    const entries: RankingEntry[] = grouped
+      .filter((g) => videoMap.has(g.videoId))
+      .map((g, i) => {
+        const v = videoMap.get(g.videoId)!;
+        return {
+          rank: (page - 1) * perPage + i + 1,
+          videoId: g.videoId,
+          url: v.url,
+          title: v.title,
+          authorName: v.authorName,
+          thumbnailUrl: v.thumbnailUrl,
+          count: g._count.videoId,
+        };
+      });
 
-  const total = await prisma.video.count({
-    where: {
-      isHidden: false,
-      ...(since
-        ? { clicks: { some: { createdAt: { gte: since } } } }
-        : { clicks: { some: {} } }),
-    },
-  });
-
-  const videoIds = grouped.map((g) => g.videoId);
-  const videos = await prisma.video.findMany({
-    where: { id: { in: videoIds }, isHidden: false },
-  });
-  const videoMap = new Map(videos.map((v) => [v.id, v]));
-
-  const entries: RankingEntry[] = grouped
-    .filter((g) => videoMap.has(g.videoId))
-    .map((g, i) => {
-      const v = videoMap.get(g.videoId)!;
-      return {
-        rank: (page - 1) * perPage + i + 1,
-        videoId: g.videoId,
-        url: v.url,
-        title: v.title,
-        authorName: v.authorName,
-        thumbnailUrl: v.thumbnailUrl,
-        count: g._count.videoId,
-      };
-    });
-
-  return { entries, total };
-}
+    return { entries, total };
+  },
+  ["click-ranking"],
+  { revalidate: 60, tags: ["ranking"] }
+);
