@@ -37,9 +37,7 @@ export default async function VideoPage({ params }: { params: Params }) {
   }
 
   const totalCount = await prisma.submission.count({ where: { videoId: id } });
-  const last24h = await prisma.submission.count({
-    where: { videoId: id, createdAt: { gte: new Date(Date.now() - 86400000) } },
-  });
+  const clickCount = await prisma.click.count({ where: { videoId: id } });
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -82,12 +80,12 @@ export default async function VideoPage({ params }: { params: Params }) {
 
           <div className="grid grid-cols-2 gap-3 mb-5">
             <div className="bg-rose-50 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-rose-500">{last24h}</p>
-              <p className="text-xs text-gray-600 mt-0.5">24時間の投稿数</p>
+              <p className="text-2xl font-bold text-rose-500">{totalCount}</p>
+              <p className="text-xs text-gray-600 mt-0.5">累計投稿数</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-gray-700">{totalCount}</p>
-              <p className="text-xs text-gray-600 mt-0.5">累計投稿数</p>
+              <p className="text-2xl font-bold text-gray-700">{clickCount}</p>
+              <p className="text-xs text-gray-600 mt-0.5">クリック数</p>
             </div>
           </div>
 
