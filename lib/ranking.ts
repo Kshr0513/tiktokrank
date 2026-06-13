@@ -127,3 +127,53 @@ export async function getRanking(
 
   return { entries, total };
 }
+
+export async function getClickRanking(
+  period: Exclude<Period, "realtime">,
+  page = 1,
+  perPage = 50
+): Promise<{ entries: RankingEntry[]; total: number }> {
+  const since = periodStart(period as Exclude<Period, "realtime">);
+  const whereClause = since ? { createdAt: { gte: since } } : {};
+
+  const grouped = await prisma.click.groupBy({
+    by: ["videoId"],
+    where: whereClause,
+    _count: { videoId: true },
+    orderBy: { _count: { videoId: "desc" } },
+    skip: (page - 1) * perPage,
+    take: perPage,
+  });
+
+  const total = await prisma.video.count({
+    where: {
+      isHidden: false,
+      ...(since
+        ? { clicks: { some: { createdAt: { gte: since } } } }
+        : { clicks: { some: {} } }),
+    },
+  });
+
+  const videoIds = grouped.map((g) => g.videoId);
+  const videos = await prisma.video.findMany({
+    where: { id: { in: videoIds }, isHidden: false },
+  });
+  const videoMap = new Map(videos.map((v) => [v.id, v]));
+
+  const entries: RankingEntry[] = grouped
+    .filter((g) => videoMap.has(g.videoId))
+    .map((g, i) => {
+      const v = videoMap.get(g.videoId)!;
+      return {
+        rank: (page - 1) * perPage + i + 1,
+        videoId: g.videoId,
+        url: v.url,
+        title: v.title,
+        authorName: v.authorName,
+        thumbnailUrl: v.thumbnailUrl,
+        count: g._count.videoId,
+      };
+    });
+
+  return { entries, total };
+}

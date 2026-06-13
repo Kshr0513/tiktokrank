@@ -20,6 +20,7 @@ model Video {
 
   submissions  Submission[]
   reports      Report[]
+  clicks       Click[]
 }
 
 model Submission {
@@ -43,4 +44,16 @@ model Report {
   video     Video    @relation(fields: [videoId], references: [id])
 
   @@index([videoId])
+}
+
+model Click {
+  id        String   @id @default(cuid())
+  videoId   String
+  ipHash    String
+  createdAt DateTime @default(now())
+
+  video     Video    @relation(fields: [videoId], references: [id])
+
+  @@index([videoId])
+  @@index([createdAt])
 }

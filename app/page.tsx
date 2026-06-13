@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { getRanking } from "@/lib/ranking";
+import { getRanking, getClickRanking } from "@/lib/ranking";
 import { RankingList } from "@/components/RankingList";
 import { SubmitForm } from "@/components/SubmitForm";
 import { Pagination } from "@/components/Pagination";
 import { AdSlot } from "@/components/AdSlot";
+import { SortTabs } from "@/components/SortTabs";
 
 export const revalidate = 60;
 
@@ -18,11 +19,15 @@ const PER_PAGE = 50;
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; sort?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, sort: sortParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
-  const { entries, total } = await getRanking("daily", page, PER_PAGE);
+  const currentSort: "submit" | "click" = sortParam === "click" ? "click" : "submit";
+  const { entries, total } =
+    currentSort === "click"
+      ? await getClickRanking("daily", page, PER_PAGE)
+      : await getRanking("daily", page, PER_PAGE);
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
@@ -55,8 +60,14 @@ export default async function HomePage({
             <a href="/ranking/all" className="text-rose-500 hover:underline">総合</a>
           </nav>
         </div>
+        <SortTabs currentSort={currentSort} basePath="/" currentPage={page} />
         <RankingList entries={entries} />
-        <Pagination currentPage={page} totalPages={totalPages} basePath="/" />
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          basePath="/"
+          extraParams={currentSort === "click" ? { sort: "click" } : {}}
+        />
       </section>
     </>
   );

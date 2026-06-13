@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getRanking, getRealtimeFeed, type Period } from "@/lib/ranking";
+import { getRanking, getClickRanking, getRealtimeFeed, type Period } from "@/lib/ranking";
 import { RankingList } from "@/components/RankingList";
 import { RealtimeFeed } from "@/components/RealtimeFeed";
 import { Pagination } from "@/components/Pagination";
 import { AdSlot } from "@/components/AdSlot";
 import { SubmitForm } from "@/components/SubmitForm";
+import { SortTabs } from "@/components/SortTabs";
 
 export const revalidate = 60;
 
@@ -22,7 +23,7 @@ const VALID_PERIODS: Period[] = ["realtime", "daily", "weekly", "monthly", "all"
 const PER_PAGE = 50;
 
 type Params = Promise<{ period: string }>;
-type SearchParams = Promise<{ page?: string }>;
+type SearchParams = Promise<{ page?: string; sort?: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { period } = await params;
@@ -60,13 +61,14 @@ export default async function RankingPage({
   searchParams: SearchParams;
 }) {
   const { period } = await params;
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, sort: sortParam } = await searchParams;
 
   if (!VALID_PERIODS.includes(period as Period)) notFound();
 
   const typedPeriod = period as Period;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const label = PERIOD_LABELS[typedPeriod];
+  const currentSort: "submit" | "click" = sortParam === "click" ? "click" : "submit";
 
   const otherPeriods = VALID_PERIODS.filter((p) => p !== typedPeriod);
 
@@ -115,7 +117,10 @@ export default async function RankingPage({
     );
   }
 
-  const { entries, total } = await getRanking(typedPeriod, page, PER_PAGE);
+  const { entries, total } =
+    currentSort === "click"
+      ? await getClickRanking(typedPeriod, page, PER_PAGE)
+      : await getRanking(typedPeriod, page, PER_PAGE);
   const totalPages = Math.ceil(total / PER_PAGE);
 
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "";
@@ -166,11 +171,17 @@ export default async function RankingPage({
             ))}
           </nav>
         </div>
+        <SortTabs
+          currentSort={currentSort}
+          basePath={`/ranking/${period}`}
+          currentPage={page}
+        />
         <RankingList entries={entries} />
         <Pagination
           currentPage={page}
           totalPages={totalPages}
           basePath={`/ranking/${period}`}
+          extraParams={currentSort === "click" ? { sort: "click" } : {}}
         />
       </section>
     </>

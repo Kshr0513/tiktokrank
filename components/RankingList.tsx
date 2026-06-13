@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { RankingEntry } from "@/lib/ranking";
 import { AdSlot } from "./AdSlot";
 import { ReportButton } from "./ReportButton";
+import { VideoLink } from "./VideoLink";
 
 interface Props {
   entries: RankingEntry[];
@@ -66,12 +67,10 @@ export function RankingList({ entries }: Props) {
               </div>
             </div>
 
-            <a
+            <VideoLink
+              videoId={entry.videoId}
               href={`/video/${entry.videoId}`}
-              className="shrink-0 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors text-center"
-            >
-              TikTokで見る
-            </a>
+            />
           </li>
     );
   });
