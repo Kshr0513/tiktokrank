@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function SubmitForm() {
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<
     { type: "idle" } | { type: "loading" } | { type: "success"; message: string } | { type: "error"; message: string }
@@ -34,6 +36,7 @@ export function SubmitForm() {
       const msg = `「${data.title}」を投稿しました！ 現在${data.count}件の投稿`;
       setStatus({ type: "success", message: msg });
       setUrl("");
+      router.refresh();
     } catch {
       setStatus({ type: "error", message: "通信エラーが発生しました" });
     }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { normalizeTikTokUrl, fetchOEmbed, TikTokUrlError } from "@/lib/tiktok";
@@ -105,6 +106,13 @@ export async function POST(req: NextRequest) {
   const count = await prisma.submission.count({
     where: { videoId, createdAt: { gte: oneDayAgo } },
   });
+
+  revalidatePath("/");
+  revalidatePath("/ranking/daily");
+  revalidatePath("/ranking/weekly");
+  revalidatePath("/ranking/monthly");
+  revalidatePath("/ranking/all");
+  revalidatePath("/ranking/realtime");
 
   return NextResponse.json({
     success: true,
