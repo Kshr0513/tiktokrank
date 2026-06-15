@@ -1,12 +1,21 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 
-// ビルド時の静的生成を無効化（DBアクセスが必要なため）
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // 1時間キャッシュ
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://tiktokrank.example.com";
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes("example.com")) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return process.env.NEXT_PUBLIC_BASE_URL ?? "https://tiktokrank.example.com";
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const BASE_URL = getBaseUrl();
+
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "always", priority: 1.0 },
     { url: `${BASE_URL}/ranking/realtime`, changeFrequency: "always", priority: 0.9 },
@@ -20,12 +29,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/contact`, changeFrequency: "yearly", priority: 0.3 },
   ];
 
-  const videos = await prisma.video.findMany({
-    where: { isHidden: false },
-    select: { id: true, createdAt: true },
-    orderBy: { createdAt: "desc" },
-    take: 5000,
-  });
+  let videos: { id: string; createdAt: Date }[] = [];
+  try {
+    videos = await prisma.video.findMany({
+      where: { isHidden: false },
+      select: { id: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+    });
+  } catch (e) {
+    console.error("[sitemap] DB query failed, returning static pages only:", e);
+  }
 
   const videoPages: MetadataRoute.Sitemap = videos.map((v) => ({
     url: `${BASE_URL}/video/${v.id}`,

@@ -24,70 +24,85 @@ export function RankingList({ entries, sortType = "submit" }: Props) {
   const items: React.ReactNode[] = [];
   entries.forEach((entry, idx) => {
     if (idx > 0 && idx % 5 === 0) {
-      items.push(<AdSlot position="infeed" key={`ad-${idx}`} />);
+      items.push(
+        <li key={`ad-${idx}`} className="col-span-full">
+          <AdSlot position="infeed" />
+        </li>
+      );
     }
     items.push(
       <li
         key={entry.videoId}
-        className="bg-white rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 p-3"
+        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"
       >
-            <span
-              className={`text-lg font-bold w-8 text-center shrink-0 ${
-                entry.rank <= 3 ? "text-rose-500" : "text-gray-400"
-              }`}
-            >
-              {entry.rank}
-            </span>
+        <a
+          href={`/video/${entry.videoId}`}
+          className="relative block aspect-[9/16] bg-gray-100"
+        >
+          {entry.thumbnailUrl ? (
+            <Image
+              src={entry.thumbnailUrl}
+              alt={entry.title ?? "TikTok動画"}
+              fill
+              sizes="(max-width: 640px) 50vw, 240px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+              No img
+            </div>
+          )}
 
-            {entry.thumbnailUrl ? (
-              <div className="relative w-14 h-20 shrink-0 rounded overflow-hidden bg-gray-100">
-                <Image
-                  src={entry.thumbnailUrl}
-                  alt={entry.title ?? "TikTok動画"}
-                  fill
-                  sizes="56px"
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-14 h-20 shrink-0 rounded bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
-                No img
-              </div>
-            )}
+          <span
+            className={`absolute top-2 left-2 min-w-7 h-7 px-1.5 inline-flex items-center justify-center rounded-full text-sm font-bold shadow ${
+              entry.rank <= 3
+                ? "bg-rose-500 text-white"
+                : "bg-white/90 text-gray-700"
+            }`}
+          >
+            {entry.rank}
+          </span>
 
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm leading-snug line-clamp-2">
-                {entry.title ?? "TikTok動画"}
-              </p>
-              {entry.authorName && (
-                <p className="text-xs text-gray-500 mt-0.5">@{entry.authorName}</p>
-              )}
-              <p className="text-xs text-rose-500 mt-1 font-medium">
-                {sortType === "click" ? `${entry.count} view` : `${entry.count}件の投稿`}
-              </p>
-              <div className="mt-1 flex items-center gap-2">
-                <ReportButton videoId={entry.videoId} />
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`【${entry.rank}位】TikTok保存ランキング🔥\n\n「${entry.title ?? "TikTok動画"}」\n\n${entry.count}${sortType === "click" ? " view獲得中" : "人が保存中"}👇\n#TikTok保存ランキング #TikTok人気動画`)}&url=${encodeURIComponent(`${baseUrl}/video/${entry.videoId}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-gray-400 hover:text-black transition-colors"
-                >
-                  𝕏
-                </a>
-              </div>
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-xs font-medium">
+            {sortType === "click" ? `${entry.count} view` : `${entry.count}件`}
+          </span>
+        </a>
+
+        <div className="p-2.5 flex flex-col flex-1">
+          <p className="font-medium text-sm leading-snug line-clamp-2">
+            {entry.title ?? "TikTok動画"}
+          </p>
+          {entry.authorName && (
+            <p className="text-xs text-gray-500 mt-0.5 truncate">
+              @{entry.authorName}
+            </p>
+          )}
+
+          <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ReportButton videoId={entry.videoId} />
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`【${entry.rank}位】TikTok保存ランキング🔥\n\n「${entry.title ?? "TikTok動画"}」\n\n${entry.count}${sortType === "click" ? " view獲得中" : "人が保存中"}👇\n#TikTok保存ランキング #TikTok人気動画`)}&url=${encodeURIComponent(`${baseUrl}/video/${entry.videoId}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-400 hover:text-black transition-colors"
+              >
+                𝕏
+              </a>
             </div>
 
             <VideoLink
               videoId={entry.videoId}
               href={`/video/${entry.videoId}`}
             />
-          </li>
+          </div>
+        </div>
+      </li>
     );
   });
 
   return (
-    <ol className="space-y-2">
+    <ol className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {items}
     </ol>
   );
